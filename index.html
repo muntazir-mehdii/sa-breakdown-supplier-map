@@ -262,7 +262,7 @@ function initMap(){
 /* ---------- reading what the controller typed or pasted ---------- */
 function inSA(lat,lng){return lat<-21.5&&lat>-35.5&&lng>16&&lng<33.5}
 function parseCoords(t){
-  var m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+  var m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/(-?\d{1,2}\.\d+)\s*,\s*\+?(-?\d{1,3}\.\d+)/);
   if(!m)return null;var a=+m[1],b=+m[2];
   if(inSA(a,b))return [a,b];if(inSA(b,a))return [b,a];return 'outside';
 }
