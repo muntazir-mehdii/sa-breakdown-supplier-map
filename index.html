@@ -252,7 +252,7 @@ function drawSuppliers(){layer.clearLayers();markers=S.map(function(s,i){var m=L
 function initMap(){
   if(map){map.invalidateSize();return}
   map=L.map('map',{zoomControl:true,attributionControl:true}).fitBounds([[-34.9,16.4],[-22.1,32.9]]);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>, routes by OSRM'}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, routes by OSRM'}).addTo(map);
   layer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);
   drawSuppliers();
   map.on('click',function(e){if(!check())return;setBreakdown(e.latlng.lat,e.latlng.lng,'Dropped pin at '+e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5))});
