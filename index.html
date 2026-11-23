@@ -116,7 +116,7 @@ tr.new td{background:#fff8dd}
 </head>
 <body>
 
-<div id="gate">
+<div id="gate" hidden>
   <form class="gatebox" id="gateform" novalidate>
     <div class="stripe" aria-hidden="true"></div>
     <h1>Breakdown supplier map</h1>
@@ -135,7 +135,7 @@ tr.new td{background:#fff8dd}
     <span class="who" id="who"></span>
     <button class="btn ghost sm" id="openSheet">Supplier Sheet</button>
     <button class="btn ghost sm" id="openAccess" hidden>Access</button>
-    <button class="btn ghost sm" id="signout">Sign out</button>
+    <button class="btn ghost sm" id="signout" hidden>Sign out</button>
   </header>
   <div class="main">
     <aside>
@@ -361,7 +361,9 @@ $('#openAccess').onclick=function(){if(me()!==OWNER)return;usersHTML();openD('#a
 $('#adduser').onsubmit=function(ev){ev.preventDefault();var e=$('#ue').value.trim().toLowerCase();if(e&&approved.indexOf(e)<0){approved.push(e);saveAccess()}ev.target.reset();usersHTML()};
 
 /* ---------- start ---------- */
-if(check())enter();
+/* preview: open straight away as the owner, no sign-in screen */
+if(!me()||!allowed(me()))store.set('bsm_user',OWNER);
+enter();
 })();
 </script>
 </body>
