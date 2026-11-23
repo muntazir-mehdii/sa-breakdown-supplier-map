@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Breakdown Supplier Map</title>
+<meta name="description" content="Find the three closest tyre suppliers to a breakdown anywhere in South Africa, by driving distance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --asphalt:#16181c; --asphalt2:#23262c; --sign:#ffc21a; --sign-d:#e0a800;
+  --paper:#ffffff; --bg:#f3f4f6; --text:#1d2127; --muted:#5c6470; --line:#e2e5ea;
+  --ok:#1f8f4e; --bad:#c0392b;
+  --r1:#ffc21a; --r2:#3b82c4; --r3:#8a5cc2;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Barlow Semi Condensed",Barlow,sans-serif;margin:0;line-height:1.1}
+button,input{font:inherit}
+:focus-visible{outline:3px solid var(--sign);outline-offset:2px}
+.btn{border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer;min-height:46px;background:var(--sign);color:var(--asphalt)}
+.btn:hover{background:var(--sign-d)}
+.btn.ghost{background:transparent;color:#e9ecf1;box-shadow:inset 0 0 0 1.5px #3a3f48}
+.btn.ghost:hover{background:#2c3038}
+.btn.line{background:#fff;color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.line:hover{background:var(--bg)}
+.btn.sm{min-height:38px;padding:8px 12px;font-size:.92rem}
+input.t{width:100%;border:1.5px solid #cdd2da;border-radius:10px;padding:12px 14px;min-height:48px;background:#fff;color:var(--text)}
+input.t:focus{border-color:var(--asphalt);outline:0;box-shadow:0 0 0 3px rgba(255,194,26,.45)}
+label.l{display:block;font-weight:600;font-size:.9rem;margin:0 0 6px}
+
+/* sign-in */
+#gate{position:fixed;inset:0;z-index:2000;background:var(--asphalt);display:grid;place-items:center;padding:20px}
+#gate[hidden]{display:none}
+.gatebox{width:100%;max-width:400px;color:#e9ecf1}
+.gatebox h1{font-size:2.3rem;color:#fff}
+.gatebox p{color:#aeb5c0;margin:10px 0 24px}
+.gatebox .stripe{height:8px;width:88px;margin-bottom:22px;background:repeating-linear-gradient(-45deg,var(--sign) 0 10px,var(--asphalt) 10px 20px);border-radius:2px}
+.gatebox label.l{color:#d5dae2}
+.gatebox .btn{width:100%;margin-top:12px}
+.gatebox .msg{min-height:1.5em;margin-top:12px;color:#ffb4a8;font-weight:500}
+.gatebox .demo{margin-top:22px;padding-top:16px;border-top:1px solid #30353d;font-size:.9rem;color:#9aa3af}
+.gatebox .demo button{background:none;border:0;color:var(--sign);padding:2px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* app */
+.app{display:grid;grid-template-rows:auto 1fr;height:100dvh}
+header{background:var(--asphalt);color:#e9ecf1;display:flex;align-items:center;gap:12px;padding:10px 16px;flex-wrap:wrap}
+header h1{font-size:1.35rem;color:#fff;margin-right:auto;display:flex;align-items:center;gap:10px}
+header h1 i{display:inline-block;width:12px;height:22px;background:var(--sign);border-radius:2px}
+header .who{font-size:.9rem;color:#aeb5c0}
+.main{display:grid;grid-template-columns:400px 1fr;min-height:0}
+aside{background:var(--paper);border-right:1px solid var(--line);overflow:auto;padding:22px 20px 28px}
+aside h2{font-size:1.6rem}
+.row{display:flex;gap:8px;margin-top:12px}
+.row .t{flex:1}
+.hint{font-size:.92rem;color:var(--muted);margin:10px 0 0}
+.status{margin:16px 0 0;font-size:.95rem;min-height:1.4em}
+.status.err{color:var(--bad);font-weight:500}
+.status b{font-weight:600}
+#map{min-height:0;height:100%;background:#e9eef2}
+
+.card{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px 14px;display:grid;grid-template-columns:38px 1fr;gap:4px 12px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:#b9c0ca}
+.card .n{grid-row:span 4;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 1.15rem "Barlow Semi Condensed";color:#fff}
+.card h3{font-size:1.2rem}
+.card .km{font:600 1.05rem "Barlow Semi Condensed";letter-spacing:.01em}
+.card .sv{font-size:.9rem;color:var(--muted)}
+.card .acts{display:flex;gap:8px;margin-top:8px}
+.card .acts a{flex:1;text-align:center;text-decoration:none;border-radius:9px;padding:9px 8px;font-weight:600;font-size:.92rem;min-height:40px}
+.a-call{background:var(--asphalt);color:#fff}
+.a-wa{background:#e8f6ee;color:#126b38}
+.empty{margin-top:18px;padding:16px;border:1.5px dashed #cfd5dc;border-radius:14px;color:var(--muted);font-size:.95rem}
+
+/* markers */
+.pin{width:16px;height:16px;border-radius:50%;background:var(--asphalt);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.pin.top{width:28px;height:28px;display:grid;place-items:center;color:#fff;font:700 14px "Barlow Semi Condensed";border-width:3px}
+.bd{width:34px;height:34px}
+.leaflet-popup-content{font:15px/1.45 Barlow,sans-serif;margin:12px 14px}
+.leaflet-popup-content h3{font-size:1.1rem;margin-bottom:4px}
+.leaflet-popup-content a{color:#0b63b6}
+
+/* dialogs */
+dialog{border:0;border-radius:16px;padding:0;width:min(860px,94vw);max-height:88vh;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,12,15,.6)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.dh h2{font-size:1.45rem}
+.db{padding:16px 20px 22px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;background:var(--bg);position:sticky;top:0}
+tr.new td{background:#fff8dd}
+.tablewrap{max-height:42vh;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.grid2 .full{grid-column:1/-1}
+.ulist{list-style:none;margin:12px 0 0;padding:0}
+.ulist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ulist small{color:var(--muted)}
+.note{font-size:.92rem;color:var(--muted);margin:12px 0 0}
+.okmsg{color:var(--ok);font-weight:500}
+
+@media (max-width:860px){
+  .app{height:auto;min-height:100dvh}
+  .main{grid-template-columns:1fr}
+  #map{height:52vh;order:-1}
+  aside{border-right:0;border-top:1px solid var(--line)}
+  header .who{display:none}
+  .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form class="gatebox" id="gateform" novalidate>
+    <div class="stripe" aria-hidden="true"></div>
+    <h1>Breakdown supplier map</h1>
+    <p>Sign in with an approved email to see suppliers.</p>
+    <label class="l" for="em">Email</label>
+    <input class="t" id="em" type="email" autocomplete="email" required>
+    <button class="btn">Sign in</button>
+    <div class="msg" id="gmsg" role="alert"></div>
+    <div class="demo">Approved for this preview: <button type="button" data-em="owner@breakdown.test">owner@breakdown.test</button> (can manage access) and <button type="button" data-em="controller@breakdown.test">controller@breakdown.test</button>.</div>
+  </form>
+</div>
+
+<div class="app" id="app" hidden>
+  <header>
+    <h1><i aria-hidden="true"></i>Breakdown supplier map</h1>
+    <span class="who" id="who"></span>
+    <button class="btn ghost sm" id="openSheet">Supplier Sheet</button>
+    <button class="btn ghost sm" id="openAccess" hidden>Access</button>
+    <button class="btn ghost sm" id="signout">Sign out</button>
+  </header>
+  <div class="main">
+    <aside>
+      <h2>Where is the breakdown?</h2>
+      <form id="find" class="row" autocomplete="off">
+        <label class="sr" for="q" style="position:absolute;left:-9999px">Breakdown location</label>
+        <input class="t" id="q" placeholder="Address, WhatsApp pin or Maps link">
+        <button class="btn">Find</button>
+      </form>
+      <p class="hint">Or tap the map to drop a pin.</p>
+      <p class="status" id="status" aria-live="polite"></p>
+      <div id="res"><div class="empty">The 3 closest suppliers by road will show here, with distance and drive time.</div></div>
+    </aside>
+    <div id="map" role="application" aria-label="Map of South Africa with supplier pins"></div>
+  </div>
+</div>
+
+<dialog id="sheet">
+  <div class="dh"><h2>Supplier Sheet</h2><button class="btn line sm" data-close>Close</button></div>
+  <div class="db">
+    <div class="tablewrap"><table><thead><tr><th>Name</th><th>WhatsApp</th><th>Town</th><th>GPS</th><th>Services</th><th>Hours</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <h3 style="margin-top:22px;font-size:1.2rem">Add a supplier by address</h3>
+    <p class="note" style="margin-top:4px">Leave out the GPS. The coordinates are found from the address, and the pin appears on the map.</p>
+    <form id="addsup" class="grid2" autocomplete="off">
+      <div><label class="l" for="sn">Name</label><input class="t" id="sn" required></div>
+      <div><label class="l" for="sw">WhatsApp number</label><input class="t" id="sw" inputmode="tel" required></div>
+      <div class="full"><label class="l" for="sa">Address or town</label><input class="t" id="sa" placeholder="e.g. Kariega, Eastern Cape" required></div>
+      <div><label class="l" for="ss">Services</label><input class="t" id="ss" placeholder="Puncture repair, tyre change"></div>
+      <div><label class="l" for="sh">Hours</label><input class="t" id="sh" placeholder="24 hours"></div>
+      <div class="full"><button class="btn">Add supplier</button> <span id="addmsg" class="note" role="status"></span></div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="access">
+  <div class="dh"><h2>Access</h2><button class="btn line sm" data-close>Close</button></div>
+  <div class="db">
+    <p class="note" style="margin-top:0">Only these emails can open the site. Removing someone takes effect on their next page load.</p>
+    <ul class="ulist" id="ulist"></ul>
+    <form id="adduser" class="row" autocomplete="off">
+      <label for="ue" style="position:absolute;left:-9999px">Email to approve</label>
+      <input class="t" id="ue" type="email" placeholder="new.controller@example.com" required>
+      <button class="btn">Approve</button>
+    </form>
+  </div>
+</dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+"use strict";
+function $(s){return document.querySelector(s)}
+function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML}
+var store={get:function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- the Sheet (sample rows) ---------- */
+var BASE=[
+ ['Jozi 24h Mobile Tyres','082 555 0101','Johannesburg',-26.2151,28.0602,'Puncture repair, tyre change, car and LDV','24 hours'],
+ ['Highveld Tyre Rescue','083 555 0102','Kempton Park',-26.1002,28.2310,'Tyre change, truck tyres, wheel balancing','24 hours'],
+ ['Capital Roadside Tyres','072 555 0103','Pretoria',-25.7490,28.1890,'Puncture repair, tyre change','06:00 to 22:00'],
+ ['Vaal Truck Tyres','084 555 0104','Vereeniging',-26.6731,27.9261,'Truck and trailer tyres, recovery','24 hours'],
+ ['Platinum Tyres','061 555 0105','Rustenburg',-25.6670,27.2420,'Tyre change, mining vehicles','06:00 to 20:00'],
+ ['Bay Mobile Tyres','082 555 0106','Durban',-29.8790,30.9910,'Puncture repair, tyre change, run-flat','24 hours'],
+ ['Midlands Tyre and Tow','083 555 0107','Pietermaritzburg',-29.6000,30.3790,'Tyre change, towing','24 hours'],
+ ['N3 Tyre Stop','071 555 0108','Harrismith',-28.2730,29.1290,'Truck tyres, puncture repair','24 hours'],
+ ['Zululand Tyre Rescue','079 555 0109','Richards Bay',-28.7810,32.0380,'Tyre change, truck tyres','06:00 to 21:00'],
+ ['Peninsula Rescue Tyres','082 555 0110','Cape Town',-33.9310,18.5180,'Puncture repair, tyre change','24 hours'],
+ ['Boland Mobile Tyres','084 555 0111','Worcester',-33.6460,19.4480,'Tyre change, farm vehicles','07:00 to 19:00'],
+ ['Garden Route Tyres','076 555 0112','George',-33.9630,22.4610,'Puncture repair, tyre change','07:00 to 21:00'],
+ ['Karoo Tyre Express','082 555 0113','Beaufort West',-32.3560,22.5830,'Truck tyres, tyre change','24 hours'],
+ ['Friendly City Tyres','083 555 0114','Port Elizabeth',-33.9600,25.6020,'Puncture repair, tyre change, LDV','24 hours'],
+ ['Settler Tyres','072 555 0115','Grahamstown',-33.3100,26.5300,'Tyre change','07:00 to 18:00'],
+ ['Frontier Tyre Rescue','081 555 0116','East London',-32.9990,27.9010,'Tyre change, truck tyres','24 hours'],
+ ['Transkei Roadside','073 555 0117','Mthatha',-31.5890,28.7800,'Puncture repair, tyre change','06:00 to 20:00'],
+ ['Free State Roadside','082 555 0118','Bloemfontein',-29.1210,26.2100,'Tyre change, truck tyres, recovery','24 hours'],
+ ['Diamond Fields Tyres','084 555 0119','Kimberley',-28.7400,24.7700,'Puncture repair, tyre change','07:00 to 19:00'],
+ ['Kalahari Roadside','079 555 0120','Upington',-28.4500,21.2500,'Tyre change, truck tyres','06:00 to 20:00'],
+ ['Lowveld Tyre Fitment','082 555 0121','Nelspruit',-25.4700,30.9800,'Puncture repair, tyre change','24 hours'],
+ ['Limpopo Highway Tyres','083 555 0122','Pietersburg',-23.9000,29.4500,'Truck tyres, tyre change','24 hours']
+];
+var S=BASE.map(function(r){return {name:r[0],wa:r[1],town:r[2],lat:r[3],lng:r[4],services:r[5],hours:r[6]}});
+store.get('bsm_added',[]).forEach(function(r){S.push(Object.assign(r,{added:true}))});
+
+/* ---------- old and new town names ---------- */
+var RENAMED={'port elizabeth':'Gqeberha','uitenhage':'Kariega','grahamstown':'Makhanda',"king william's town":'Qonce','king williams town':'Qonce','queenstown':'Komani','umtata':'Mthatha','pietersburg':'Polokwane','nelspruit':'Mbombela','louis trichardt':'Makhado','potgietersrus':'Mokopane','warmbaths':'Bela-Bela','nylstroom':'Modimolle','lydenburg':'Mashishing'};
+function townLabel(t){var n=RENAMED[String(t).toLowerCase()];return n?n+' ('+t+')':t}
+function modernise(q){var out=q,hit=null;Object.keys(RENAMED).forEach(function(old){var re=new RegExp('\\b'+old.replace(/'/g,"'?")+'\\b','i');if(re.test(out)){out=out.replace(re,RENAMED[old]);hit=[old,RENAMED[old]]}});return {q:out,hit:hit}}
+
+/* ---------- access (sign-in) ---------- */
+var OWNER='owner@breakdown.test';
+var approved=store.get('bsm_access',null)||[OWNER,'controller@breakdown.test'];
+function saveAccess(){store.set('bsm_access',approved)}
+function me(){return store.get('bsm_user','')}
+function allowed(e){return approved.indexOf(String(e).toLowerCase())>=0}
+function gate(msg){$('#app').hidden=true;$('#gate').hidden=false;$('#gmsg').textContent=msg||'';$('#em').focus()}
+function enter(){var e=me();$('#gate').hidden=true;$('#app').hidden=false;$('#who').textContent=e;$('#openAccess').hidden=e!==OWNER;initMap()}
+function check(){var e=me();if(!e){gate();return false}if(!allowed(e)){store.set('bsm_user','');gate('Your access has been removed. Ask the owner if this is a mistake.');return false}return true}
+$('#gateform').onsubmit=function(ev){ev.preventDefault();var e=$('#em').value.trim().toLowerCase();if(!e){$('#gmsg').textContent='Enter your email.';return}if(!allowed(e)){$('#gmsg').textContent='This email is not on the approved list. Ask the owner to add you.';return}store.set('bsm_user',e);enter()};
+document.querySelectorAll('[data-em]').forEach(function(b){b.onclick=function(){$('#em').value=b.dataset.em;$('#em').focus()}});
+$('#signout').onclick=function(){store.set('bsm_user','');location.reload()};
+window.addEventListener('storage',function(){approved=store.get('bsm_access',approved);if(me()&&!allowed(me()))check()});
+window.addEventListener('focus',function(){approved=store.get('bsm_access',approved);if(me()&&!allowed(me()))check()});
+
+/* ---------- map ---------- */
+var map,layer,bdMarker=null,routeLayer,markers=[];
+var COLORS=['#ffc21a','#3b82c4','#8a5cc2'];
+function pinIcon(rank){if(!rank)return L.divIcon({className:'',html:'<div class="pin"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+  return L.divIcon({className:'',html:'<div class="pin top" style="background:'+COLORS[rank-1]+';color:'+(rank===1?'#16181c':'#fff')+'">'+rank+'</div>',iconSize:[28,28],iconAnchor:[14,14]})}
+var bdIcon=L.divIcon({className:'',html:'<svg class="bd" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3 L32 30 H2 Z" fill="#ffc21a" stroke="#16181c" stroke-width="2.5" stroke-linejoin="round"/><rect x="15.6" y="12" width="2.8" height="9" rx="1.2" fill="#16181c"/><circle cx="17" cy="25" r="1.8" fill="#16181c"/></svg>',iconSize:[34,34],iconAnchor:[17,30]});
+function popup(s){var wa=waLink(s.wa);return '<h3>'+esc(s.name)+'</h3>'+esc(townLabel(s.town))+'<br><a href="tel:'+esc(tel(s.wa))+'">'+esc(s.wa)+'</a>&nbsp;&nbsp;<a href="'+wa+'" target="_blank" rel="noopener">WhatsApp</a><br><span style="color:#5c6470">'+esc(s.services)+'<br>'+esc(s.hours)+'</span>'}
+function tel(n){return '+27'+String(n).replace(/\D/g,'').replace(/^0/,'')}
+function waLink(n){return 'https://wa.me/'+tel(n).slice(1)}
+function drawSuppliers(){layer.clearLayers();markers=S.map(function(s,i){var m=L.marker([s.lat,s.lng],{icon:pinIcon(0),title:s.name,keyboard:true}).bindPopup(popup(s));m.addTo(layer);return m})}
+function initMap(){
+  if(map){map.invalidateSize();return}
+  map=L.map('map',{zoomControl:true,attributionControl:true}).fitBounds([[-34.9,16.4],[-22.1,32.9]]);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>, routes by OSRM'}).addTo(map);
+  layer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);
+  drawSuppliers();
+  map.on('click',function(e){if(!check())return;setBreakdown(e.latlng.lat,e.latlng.lng,'Dropped pin at '+e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5))});
+  setTimeout(function(){map.invalidateSize()},50);
+}
+
+/* ---------- reading what the controller typed or pasted ---------- */
+function inSA(lat,lng){return lat<-21.5&&lat>-35.5&&lng>16&&lng<33.5}
+function parseCoords(t){
+  var m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+  if(!m)return null;var a=+m[1],b=+m[2];
+  if(inSA(a,b))return [a,b];if(inSA(b,a))return [b,a];return 'outside';
+}
+function geocode(q){
+  return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=za&limit=1&q='+encodeURIComponent(q),{headers:{'Accept-Language':'en'}})
+   .then(function(r){if(!r.ok)throw new Error('geo');return r.json()}).then(function(a){return a&&a[0]?{lat:+a[0].lat,lng:+a[0].lon,label:a[0].display_name}:null});
+}
+function status(html,err){var el=$('#status');el.className='status'+(err?' err':'');el.innerHTML=html}
+
+$('#find').onsubmit=function(ev){
+  ev.preventDefault();if(!check())return;
+  var raw=$('#q').value.trim();if(!raw){status('Type an address, or paste a WhatsApp location or Google Maps link.',true);return}
+  var c=parseCoords(raw);
+  if(c==='outside'){status('Those coordinates are outside South Africa. Check the pin and try again.',true);return}
+  if(c){setBreakdown(c[0],c[1],'Location from pasted pin: '+c[0].toFixed(5)+', '+c[1].toFixed(5));return}
+  if(/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(raw)){status('This short link has no coordinates in it. Open it, then copy the long link or the coordinates.',true);return}
+  var mod=modernise(raw);
+  status('Finding the address...');
+  geocode(mod.q).then(function(g){
+    if(!g&&mod.hit)return geocode(raw);return g;
+  }).then(function(g){
+    if(!g){status('We could not find that address. Add the town, or tap the map to drop a pin.',true);return}
+    var note=mod.hit?' <span style="color:#5c6470">('+esc(cap(mod.hit[0]))+' is now '+esc(mod.hit[1])+')</span>':'';
+    setBreakdown(g.lat,g.lng,'<b>'+esc(shortLabel(g.label))+'</b>'+note);
+  }).catch(function(){status('The address search is not answering. Tap the map to drop a pin instead.',true)});
+};
+function cap(s){return s.replace(/\b\w/g,function(c){return c.toUpperCase()})}
+function shortLabel(l){return String(l).split(',').slice(0,3).join(',')}
+
+/* ---------- closest three by road ---------- */
+function hav(a,b,c,d){var R=6371,toR=Math.PI/180,x=(c-a)*toR,y=(d-b)*toR,h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*toR)*Math.cos(c*toR)*Math.sin(y/2)*Math.sin(y/2);return 2*R*Math.asin(Math.sqrt(h))}
+var seq=0;
+function setBreakdown(lat,lng,label){
+  var my=++seq;
+  if(bdMarker)bdMarker.setLatLng([lat,lng]);else bdMarker=L.marker([lat,lng],{icon:bdIcon,zIndexOffset:1000,title:'Breakdown'}).addTo(map);
+  routeLayer.clearLayers();markers.forEach(function(m){m.setIcon(pinIcon(0))});
+  status(label+'<br>Measuring road distance...');
+  /* straight line first, then road distance for the nearest 6 only */
+  var cand=S.map(function(s,i){return {i:i,km:hav(lat,lng,s.lat,s.lng)}}).sort(function(a,b){return a.km-b.km}).slice(0,6);
+  var coords=[lng+','+lat].concat(cand.map(function(c){return S[c.i].lng+','+S[c.i].lat})).join(';');
+  fetch('https://router.project-osrm.org/table/v1/driving/'+coords+'?sources=0&annotations=distance,duration')
+   .then(function(r){if(!r.ok)throw new Error('osrm');return r.json()})
+   .then(function(j){
+     if(my!==seq)return;
+     if(j.code!=='Ok')throw new Error('osrm');
+     cand.forEach(function(c,k){c.road=j.distances[0][k+1];c.sec=j.durations[0][k+1]});
+     var top=cand.filter(function(c){return c.road!=null}).sort(function(a,b){return a.road-b.road}).slice(0,3);
+     show(top,lat,lng,label,true);
+   }).catch(function(){if(my!==seq)return;show(cand.slice(0,3),lat,lng,label,false)});
+}
+function fmtKm(m){var k=m/1000;return (k<10?k.toFixed(1):Math.round(k))+' km'}
+function fmtT(s){var m=Math.round(s/60);if(m<60)return m+' min';var h=Math.floor(m/60);return h+' h '+(m%60)+' min'}
+function show(top,lat,lng,label,road){
+  status(label+(road?'':'<br><span style="color:#c0392b">Road distances are not available right now. Showing straight-line distance.</span>'));
+  $('#res').innerHTML=top.map(function(c,k){var s=S[c.i];
+    return '<article class="card" data-i="'+c.i+'"><div class="n" style="background:'+COLORS[k]+';color:'+(k===0?'#16181c':'#fff')+'">'+(k+1)+'</div><h3>'+esc(s.name)+'</h3><div class="km">'+(road?fmtKm(c.road)+' by road, '+fmtT(c.sec):Math.round(c.km)+' km straight line')+'</div><div class="sv">'+esc(townLabel(s.town))+'. '+esc(s.services)+'. '+esc(s.hours)+'</div><div class="acts"><a class="a-call" href="tel:'+esc(tel(s.wa))+'">Call '+esc(s.wa)+'</a><a class="a-wa" href="'+waLink(s.wa)+'" target="_blank" rel="noopener">WhatsApp</a></div></article>'}).join('');
+  var b=L.latLngBounds([[lat,lng]]);
+  top.forEach(function(c,k){var s=S[c.i];markers[c.i].setIcon(pinIcon(k+1));markers[c.i].setZIndexOffset(500-k);b.extend([s.lat,s.lng]);
+    var line=L.polyline([[lat,lng],[s.lat,s.lng]],{color:COLORS[k],weight:3,dashArray:'6 8',opacity:.9}).addTo(routeLayer);
+    if(road){fetch('https://router.project-osrm.org/route/v1/driving/'+lng+','+lat+';'+s.lng+','+s.lat+'?overview=simplified&geometries=geojson').then(function(r){return r.json()}).then(function(j){
+      if(j.code!=='Ok'||!j.routes[0])return;routeLayer.removeLayer(line);
+      L.geoJSON(j.routes[0].geometry,{style:{color:'#16181c',weight:k===0?8:7,opacity:.25}}).addTo(routeLayer);
+      L.geoJSON(j.routes[0].geometry,{style:{color:COLORS[k],weight:k===0?5:4,opacity:.95}}).addTo(routeLayer);
+    }).catch(function(){})}
+  });
+  map.fitBounds(b.pad(.25),{maxZoom:12});
+  document.querySelectorAll('.card').forEach(function(el){el.onclick=function(e){if(e.target.closest('a'))return;var i=+el.dataset.i;map.setView([S[i].lat,S[i].lng],Math.max(map.getZoom(),11));markers[i].openPopup()}});
+  if(window.matchMedia('(max-width:860px)').matches)$('#res').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- Sheet view ---------- */
+function rowsHTML(){$('#rows').innerHTML=S.map(function(s){return '<tr'+(s.added?' class="new"':'')+'><td>'+esc(s.name)+'</td><td>'+esc(s.wa)+'</td><td>'+esc(s.town)+'</td><td>'+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+(s.added?'<br><small>found from address</small>':'')+'</td><td>'+esc(s.services)+'</td><td>'+esc(s.hours)+'</td></tr>'}).join('')}
+function openD(id){if(!check())return;var d=$(id);if(d.showModal)d.showModal();else d.setAttribute('open','')}
+$('#openSheet').onclick=function(){rowsHTML();openD('#sheet')};
+document.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){b.closest('dialog').close()}});
+$('#addsup').onsubmit=function(ev){
+  ev.preventDefault();var msg=$('#addmsg');
+  var addr=$('#sa').value.trim(),mod=modernise(addr);msg.textContent='Finding coordinates...';msg.className='note';
+  geocode(mod.q+(/south africa/i.test(mod.q)?'':', South Africa')).then(function(g){
+    if(!g||!inSA(g.lat,g.lng)){msg.textContent='Could not find that address in South Africa. Add the town or province.';return}
+    var s={name:$('#sn').value.trim(),wa:$('#sw').value.trim(),town:addr,lat:g.lat,lng:g.lng,services:$('#ss').value.trim()||'Tyre change',hours:$('#sh').value.trim()||'Not given',added:true};
+    S.push(s);var saved=store.get('bsm_added',[]);saved.push({name:s.name,wa:s.wa,town:s.town,lat:s.lat,lng:s.lng,services:s.services,hours:s.hours});store.set('bsm_added',saved);
+    var m=L.marker([s.lat,s.lng],{icon:pinIcon(0),title:s.name}).bindPopup(popup(s)).addTo(layer);markers.push(m);
+    rowsHTML();ev.target.reset();msg.className='note okmsg';msg.textContent='Added at '+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'. The pin is on the map.';
+  }).catch(function(){msg.textContent='The address search is not answering. Try again in a moment.'});
+};
+
+/* ---------- Access view ---------- */
+function usersHTML(){$('#ulist').innerHTML=approved.map(function(e){return '<li><span>'+esc(e)+(e===OWNER?' <small>owner</small>':'')+(e===me()?' <small>(you)</small>':'')+'</span>'+(e===OWNER?'':'<button class="btn line sm" data-rm="'+esc(e)+'">Remove</button>')+'</li>'}).join('');
+  document.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){approved=approved.filter(function(x){return x!==b.dataset.rm});saveAccess();usersHTML()}})}
+$('#openAccess').onclick=function(){if(me()!==OWNER)return;usersHTML();openD('#access')};
+$('#adduser').onsubmit=function(ev){ev.preventDefault();var e=$('#ue').value.trim().toLowerCase();if(e&&approved.indexOf(e)<0){approved.push(e);saveAccess()}ev.target.reset();usersHTML()};
+
+/* ---------- start ---------- */
+if(check())enter();
+})();
+</script>
+</body>
+</html>
