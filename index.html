@@ -267,10 +267,14 @@ function parseCoords(t){
   if(inSA(a,b))return [a,b];if(inSA(b,a))return [b,a];return 'outside';
 }
 function geocode(q){
+  return geocodeOnce(q).catch(function(){return new Promise(function(r){setTimeout(r,1300)}).then(function(){return geocodeOnce(q)})});
+}
+function geocodeOnce(q){
   return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=za&limit=1&q='+encodeURIComponent(q),{headers:{'Accept-Language':'en'}})
    .then(function(r){if(!r.ok)throw new Error('geo');return r.json()}).then(function(a){return a&&a[0]?{lat:+a[0].lat,lng:+a[0].lon,label:a[0].display_name}:null});
 }
-function status(html,err){var el=$('#status');el.className='status'+(err?' err':'');el.innerHTML=html}
+function status(html,err){var el=$('#status');el.className='status'+(err?' err':'');el.innerHTML=html;if(err)clearResults()}
+function clearResults(){seq++;$('#res').innerHTML='<div class="empty">The 3 closest suppliers by road will show here, with distance and drive time.</div>';if(routeLayer)routeLayer.clearLayers();if(bdMarker){map.removeLayer(bdMarker);bdMarker=null}markers.forEach(function(m){m.setIcon(pinIcon(0))})}
 
 $('#find').onsubmit=function(ev){
   ev.preventDefault();if(!check())return;
